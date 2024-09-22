@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { WebsocketService } from '../../services/websocket.service';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three-stdlib';
+import  { Tween, Group, Easing } from '@tweenjs/tween.js';
 
 @Component({
   selector: 'app-game',
@@ -16,16 +17,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   private scene = new THREE.Scene();
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
-  // private controls!: OrbitControls;
+  private controls!: OrbitControls;
   private loader = new GLTFLoader();
   private animationId: number = 0;
 	private cube!: THREE.Mesh;
+	private hoveredObject: THREE.Object3D | null = null;
+	private group = new Group();
+
 
   // Área definida para a mão do jogador
   private handArea = {
     startX: -3,
     y: 15,
-    z: 14.3,
+    z: 13.3,
     spacing: 1,
   };
 
@@ -90,13 +94,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.scene.add(gridHelper);
 
 		// Controles de órbita
-		// this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-		// this.controls.enableDamping = true;
-		// this.controls.dampingFactor = 0.1;
-		// this.controls.enablePan = true;
-		// this.controls.minDistance = 10;
-		// this.controls.maxDistance = 100;
-		// this.controls.maxPolarAngle = Math.PI / 2;
+		this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+		this.controls.enableDamping = true;
+		this.controls.dampingFactor = 0.1;
+		this.controls.enablePan = true;
+		this.controls.minDistance = 10;
+		this.controls.maxDistance = 100;
+		this.controls.maxPolarAngle = Math.PI / 2;
 
   }
 
@@ -158,35 +162,81 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 			}
 		
 	}
+
+	animateLift(object: THREE.Object3D, lift: boolean) {
+		const liftHeight = 1; // Altura que a peça vai levantar
+		const targetY = lift ? object.position.y + liftHeight : object.position.y - liftHeight;
+	
+		const tween = new Tween(object.position)
+			.to({ y: targetY }, 200) // Duração de 200ms
+			.easing(Easing.Quadratic.Out)
+			.start();
+
+		 this.group.add(tween)
+	}
 	
 
   animate = () => {
     // this.animationId = requestAnimationFrame(this.animate);
     this.renderer.render(this.scene, this.camera);
+		this.group.update();
 		// this.controls.update();
   };
 
-  // Event listeners  para detectar o clique e arrastar
-  @HostListener('window:mousemove', ['$event'])
-  onMouseMove(event: MouseEvent) {
-    // Atualizar coordenadas do mouse
-    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    if (this.selectedObject) {
-      // Atualizar posição da peça selecionada com base na posição do mouse
-      this.raycaster.setFromCamera(this.mouse, this.camera);
-      const planeY = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-      const intersectPoint = new THREE.Vector3();
-      this.raycaster.ray.intersectPlane(planeY, intersectPoint);
-
-      if (intersectPoint) {
-        this.selectedObject.position.x = intersectPoint.x;
-        this.selectedObject.position.z = intersectPoint.z;
-      }
-    }
-  }
-
+	@HostListener('window:mousemove', ['$event'])
+	onMouseMove(event: MouseEvent) {
+		// Atualizar coordenadas do mouse
+		this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+		this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+	
+		this.raycaster.setFromCamera(this.mouse, this.camera);
+		const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+	
+		if (intersects.length > 0) {
+			const intersected = intersects[0].object;
+	
+			// Verificar se o objeto é uma peça de dominó
+			if (intersected.name.startsWith('Low_Domino_0')) {
+				const newHoveredObject = intersected.parent instanceof THREE.Object3D ? intersected.parent : intersected;
+	
+				if (this.hoveredObject !== newHoveredObject) {
+					// Restaurar a peça anteriormente "hovered"
+					if (this.hoveredObject && this.hoveredObject !== this.selectedObject) {
+						this.animateLift(this.hoveredObject, false);
+					}
+	
+					// Atualizar a peça atualmente "hovered"
+					this.hoveredObject = newHoveredObject;
+	
+					// Elevar a nova peça, se não estiver selecionada
+					if (this.hoveredObject !== this.selectedObject) {
+						this.animateLift(this.hoveredObject, true);
+					}
+				}
+			}
+		} else {
+			// Se não houver interseção, restaurar a peça "hovered"
+			if (this.hoveredObject && this.hoveredObject !== this.selectedObject) {
+				this.animateLift(this.hoveredObject, false);
+			}
+			this.hoveredObject = null;
+		}
+	
+		// Movimentação da peça selecionada
+		if (this.selectedObject) {
+			// Atualizar posição da peça selecionada
+			// (Conforme o código atualizado anteriormente)
+			const planeY = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.selectedObject.position.y);
+			const intersectPoint = new THREE.Vector3();
+			this.raycaster.ray.intersectPlane(planeY, intersectPoint);
+	
+			if (intersectPoint) {
+				this.selectedObject.position.x = intersectPoint.x;
+				this.selectedObject.position.z = intersectPoint.z;
+			}
+		}
+	}
+	
 	@HostListener('window:mousedown', ['$event'])
 	onMouseDown(event: MouseEvent) {
 		// Atualizar coordenadas do mouse
@@ -211,17 +261,21 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 		}
 	}
 
-@HostListener('window:mouseup', ['$event'])
-onMouseUp(event: MouseEvent) {
-  if (this.selectedObject) {
-    // Definir a distância entre as peças no grid
-    const gridSize = 1; // Ajuste de acordo com o tamanho das peças
-
-    // Encaixar no grid mais próximo
-    this.selectedObject.position.x = Math.round(this.selectedObject.position.x / gridSize) * gridSize;
-    this.selectedObject.position.z = Math.round(this.selectedObject.position.z / gridSize) * gridSize;
-  }
-  
-  this.selectedObject = null;
-}
+	@HostListener('window:mouseup', ['$event'])
+	onMouseUp(event: MouseEvent) {
+		if (this.selectedObject) {
+			// Encaixar no grid mais próximo
+			const gridSize = 1; // Ajuste conforme necessário
+			this.selectedObject.position.x = Math.round(this.selectedObject.position.x / gridSize) * gridSize;
+			this.selectedObject.position.z = Math.round(this.selectedObject.position.z / gridSize) * gridSize;
+	
+			// Restaurar a elevação se necessário
+			if (this.hoveredObject !== this.selectedObject) {
+				this.animateLift(this.selectedObject, false);
+			}
+		}
+	
+		this.selectedObject = null;
+	}
+	
 }
