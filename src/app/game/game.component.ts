@@ -187,29 +187,41 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  @HostListener('window:mousedown', ['$event'])
-  onMouseDown(event: MouseEvent) {
-    // Atualizar coordenadas do mouse
-    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+	@HostListener('window:mousedown', ['$event'])
+	onMouseDown(event: MouseEvent) {
+		// Atualizar coordenadas do mouse
+		this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+		this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+	
+		this.raycaster.setFromCamera(this.mouse, this.camera);
+		const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+	
+		if (intersects.length > 0) {
+			const intersected = intersects[0].object;
+			console.log('Objeto clicado:', intersected);
+			// Verificar se o objeto clicado é uma peça de dominó
+			if (intersected.name.startsWith('Low_Domino_0')) {
+				this.selectedObject = intersected.parent instanceof THREE.Object3D ? intersected.parent : intersected;
+				
+				// Trazer a peça para frente
+				if (this.selectedObject) {
+					this.selectedObject.parent?.add(this.selectedObject);
+				}
+			}
+		}
+	}
 
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+@HostListener('window:mouseup', ['$event'])
+onMouseUp(event: MouseEvent) {
+  if (this.selectedObject) {
+    // Definir a distância entre as peças no grid
+    const gridSize = 1; // Ajuste de acordo com o tamanho das peças
 
-    if (intersects.length > 0) {
-      const intersected = intersects[0].object;
-      // Encontrar o pai mais próximo que representa a peça completa
-      this.selectedObject = intersected.parent instanceof THREE.Object3D ? intersected.parent : intersected;
-      
-      // Trazer a peça para frente
-      if (this.selectedObject) {
-        this.selectedObject.parent?.add(this.selectedObject);
-      }
-    }
+    // Encaixar no grid mais próximo
+    this.selectedObject.position.x = Math.round(this.selectedObject.position.x / gridSize) * gridSize;
+    this.selectedObject.position.z = Math.round(this.selectedObject.position.z / gridSize) * gridSize;
   }
-
-  @HostListener('window:mouseup', ['$event'])
-  onMouseUp(event: MouseEvent) {
-    this.selectedObject = null;
-  }
+  
+  this.selectedObject = null;
+}
 }
