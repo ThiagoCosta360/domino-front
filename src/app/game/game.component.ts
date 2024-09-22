@@ -24,6 +24,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 	private hoveredObject: THREE.Object3D | null = null;
 	private group = new Group();
 
+	private adjacentPositions: { [key: string]: THREE.Mesh } = {};
+
+
 
   // Área definida para a mão do jogador
   private handArea = {
@@ -94,13 +97,13 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
     this.scene.add(gridHelper);
 
 		// Controles de órbita
-		this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-		this.controls.enableDamping = true;
-		this.controls.dampingFactor = 0.1;
-		this.controls.enablePan = true;
-		this.controls.minDistance = 10;
-		this.controls.maxDistance = 100;
-		this.controls.maxPolarAngle = Math.PI / 2;
+		// this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+		// this.controls.enableDamping = true;
+		// this.controls.dampingFactor = 0.1;
+		// this.controls.enablePan = true;
+		// this.controls.minDistance = 10;
+		// this.controls.maxDistance = 100;
+		// this.controls.maxPolarAngle = Math.PI / 2;
 
   }
 
@@ -123,8 +126,14 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 
 							// Armazenar a posição base em Y
 							dominoPiece.userData["baseY"] = dominoPiece.position.y;
+
+
 		
 							this.scene.add(dominoPiece);
+
+							// Criar as posições adjacentes após adicionar a peça central
+  const centralPosition = dominoPiece.position.clone();
+  this.createAdjacentPositions(centralPosition);
 						}, undefined, function ( error ) {
 		
 			console.error( error );
@@ -180,6 +189,35 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 	}
 
 
+createAdjacentPositions(centerPosition: THREE.Vector3) {
+  const size = 1; // Ajuste conforme necessário
+  const geometry = new THREE.PlaneGeometry(size, size);
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    opacity: 0.5,
+    transparent: true,
+    visible: true, // Torne visível para depuração; defina como false depois
+  });
+
+
+  const positions = [
+    { name: 'north', x: centerPosition.x, z: centerPosition.z - 2.5 },
+    { name: 'south', x: centerPosition.x, z: centerPosition.z + 0.5 },
+    { name: 'west', x: centerPosition.x - 1, z: centerPosition.z -1 },
+    { name: 'east', x: centerPosition.x + 1, z: centerPosition.z -1 },
+  ];
+
+  positions.forEach((pos) => {
+    const plane = new THREE.Mesh(geometry, material.clone());
+    plane.position.set(pos.x, 0.1, pos.z);
+    plane.rotation.x = -Math.PI / 2; // Plano paralelo ao chão
+    plane.name = `position-${pos.name}`;
+    this.adjacentPositions[pos.name] = plane;
+    this.scene.add(plane);
+  });
+}
+
+
   animate = () => {
     // this.animationId = requestAnimationFrame(this.animate);
     this.renderer.render(this.scene, this.camera);
@@ -196,11 +234,12 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 		this.raycaster.setFromCamera(this.mouse, this.camera);
 		const intersects = this.raycaster.intersectObjects(this.scene.children, true);
 	
-		if (intersects.length > 0) {
+		console.log('objeto:', intersects[0].object.name);
+
+		if (intersects.length > 0 && intersects[0].object.name.startsWith('Low_Domino_0')) {
 			const intersected = intersects[0].object;
-	
-			// Verificar se o objeto é uma peça de dominó
-			if (intersected.name.startsWith('Low_Domino_0')) {
+
+				console.log('Peça de dominó detectada:', intersected.name);
 				const newHoveredObject = intersected.parent instanceof THREE.Object3D ? intersected.parent : intersected;
 	
 				if (this.hoveredObject !== newHoveredObject) {
@@ -217,7 +256,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 						this.animateLift(this.hoveredObject, true);
 					}
 				}
-			}
+			
 		} else {
 			// Se não houver interseção, restaurar a peça "hovered"
 			if (this.hoveredObject && this.hoveredObject !== this.selectedObject) {
@@ -226,19 +265,19 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 			this.hoveredObject = null;
 		}
 	
-		// Movimentação da peça selecionada
-		if (this.selectedObject) {
-			// Atualizar posição da peça selecionada
-			// (Conforme o código atualizado anteriormente)
-			const planeY = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.selectedObject.position.y);
-			const intersectPoint = new THREE.Vector3();
-			this.raycaster.ray.intersectPlane(planeY, intersectPoint);
+		// // Movimentação da peça selecionada
+		// if (this.selectedObject) {
+		// 	// Atualizar posição da peça selecionada
+		// 	// (Conforme o código atualizado anteriormente)
+		// 	const planeY = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.selectedObject.position.y);
+		// 	const intersectPoint = new THREE.Vector3();
+		// 	this.raycaster.ray.intersectPlane(planeY, intersectPoint);
 	
-			if (intersectPoint) {
-				this.selectedObject.position.x = intersectPoint.x;
-				this.selectedObject.position.z = intersectPoint.z;
-			}
-		}
+		// 	if (intersectPoint) {
+		// 		this.selectedObject.position.x = intersectPoint.x;
+		// 		this.selectedObject.position.z = intersectPoint.z;
+		// 	}
+		// }
 	}
 	
 	@HostListener('window:mousedown', ['$event'])
@@ -252,34 +291,78 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 	
 		if (intersects.length > 0) {
 			const intersected = intersects[0].object;
-			console.log('Objeto clicado:', intersected);
-			// Verificar se o objeto clicado é uma peça de dominó
+	
+			// Verificar se clicou em uma peça
 			if (intersected.name.startsWith('Low_Domino_0')) {
-				this.selectedObject = intersected.parent instanceof THREE.Object3D ? intersected.parent : intersected;
-				
-				// Trazer a peça para frente
-				if (this.selectedObject) {
-					this.selectedObject.parent?.add(this.selectedObject);
-				}
+				const selected = intersected.parent instanceof THREE.Object3D ? intersected.parent : intersected;
+				this.selectPiece(selected);
+			}
+			// Verificar se clicou em uma posição adjacente
+			else if (intersected.name.startsWith('position-') && this.selectedPiece) {
+				console.log('Posição adjacente detectada:', intersected.name);
+				const positionName = intersected.name.split('-')[1];
+				const targetPosition = this.adjacentPositions[positionName].position;
+				this.placeSelectedPiece(targetPosition);
 			}
 		}
 	}
 
+	private selectedPiece: THREE.Object3D | null = null;
+
+selectPiece(piece: THREE.Object3D) {
+  // Deselecionar a peça anterior, se houver
+  if (this.selectedPiece) {
+    this.highlightPiece(this.selectedPiece, false);
+  }
+  this.selectedPiece = piece;
+  this.highlightPiece(this.selectedPiece, true);
+}
+
+highlightPiece(piece: THREE.Object3D, highlight: boolean) {
+  if (highlight) {
+    // Elevar a peça ou mudar sua cor
+    this.animateLift(piece, true);
+  } else {
+    this.animateLift(piece, false);
+  }
+}
+
+updateAdjacentPositionsVisibility(visible: boolean) {
+  Object.values(this.adjacentPositions).forEach((plane) => {
+    plane.visible = visible;
+  });
+}
+
+placeSelectedPiece(targetPosition: THREE.Vector3) {
+  if (this.selectedPiece) {
+    // Mover a peça para a posição alvo
+    this.selectedPiece.position.set(targetPosition.x, targetPosition.y, targetPosition.z);
+    this.selectedPiece.rotation.set(-Math.PI / 2, 0, 0); // Ajustar a orientação, se necessário
+
+    // Deselecionar a peça
+    this.highlightPiece(this.selectedPiece, false);
+    this.selectedPiece = null;
+
+    // Atualizar as posições adjacentes (opcional)
+    // this.updateAdjacentPositions();
+  }
+}
+
 	@HostListener('window:mouseup', ['$event'])
 	onMouseUp(event: MouseEvent) {
-		if (this.selectedObject) {
-			// Encaixar no grid mais próximo
-			const gridSize = 1; // Ajuste conforme necessário
-			this.selectedObject.position.x = Math.round(this.selectedObject.position.x / gridSize) * gridSize;
-			this.selectedObject.position.z = Math.round(this.selectedObject.position.z / gridSize) * gridSize;
+		// if (this.selectedObject) {
+		// 	// Encaixar no grid mais próximo
+		// 	const gridSize = 1; // Ajuste conforme necessário
+		// 	this.selectedObject.position.x = Math.round(this.selectedObject.position.x / gridSize) * gridSize;
+		// 	this.selectedObject.position.z = Math.round(this.selectedObject.position.z / gridSize) * gridSize;
 	
-			// Restaurar a elevação se necessário
-			if (this.hoveredObject !== this.selectedObject) {
-				this.animateLift(this.selectedObject, false);
-			}
-		}
+		// 	// Restaurar a elevação se necessário
+		// 	if (this.hoveredObject !== this.selectedObject) {
+		// 		this.animateLift(this.selectedObject, false);
+		// 	}
+		// }
 	
-		this.selectedObject = null;
+		// this.selectedObject = null;
 	}
 	
 }
