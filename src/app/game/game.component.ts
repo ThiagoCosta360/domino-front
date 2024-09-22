@@ -120,6 +120,9 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 
 							dominoPiece.position.set(0.5, 0.1, 0);
 							dominoPiece.rotation.set(-Math.PI / 2, 0, 0); // Deitado sobre a mesa
+
+							// Armazenar a posição base em Y
+							dominoPiece.userData["baseY"] = dominoPiece.position.y;
 		
 							this.scene.add(dominoPiece);
 						}, undefined, function ( error ) {
@@ -165,7 +168,8 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 
 	animateLift(object: THREE.Object3D, lift: boolean) {
 		const liftHeight = 1; // Altura que a peça vai levantar
-		const targetY = lift ? object.position.y + liftHeight : object.position.y - liftHeight;
+		const baseY = object.userData["baseY"] || 0; // Posição base em Y
+		const targetY = lift ? baseY + liftHeight : baseY;
 	
 		const tween = new Tween(object.position)
 			.to({ y: targetY }, 200) // Duração de 200ms
@@ -174,7 +178,7 @@ export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
 
 		 this.group.add(tween)
 	}
-	
+
 
   animate = () => {
     // this.animationId = requestAnimationFrame(this.animate);
