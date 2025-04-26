@@ -1,11 +1,14 @@
 import { Injectable } from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+	providedIn: 'root'
 })
 export class UserService {
 
-  setUser(name: string) {
+  setUser(name: string) :void{
+    if(name.trim() == '') {
+      throw new Error('Username cannot be empty');
+    }
     localStorage.setItem('user', name);
   }
 
@@ -16,5 +19,4 @@ export class UserService {
 	logout(): void {
 		localStorage.removeItem('user');
 	}
-
 }
