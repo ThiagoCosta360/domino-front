@@ -5,6 +5,48 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three-stdlib';
 import  { Tween, Group, Easing } from '@tweenjs/tween.js';
 
+// export class DominoPiece {
+//   public mesh: THREE.Object3D;
+//   public name: string;
+//   public value1: number;
+//   public value2: number;
+//   private baseY: number;
+//   public isSelected: boolean = false;
+//   public isHovered: boolean = false;
+
+//   constructor(mesh: THREE.Object3D, name: string, value1: number, value2: number) {
+//     this.mesh = mesh;
+//     this.name = name;
+//     this.value1 = value1;
+//     this.value2 = value2;
+//     this.baseY = mesh.position.y;
+//     this.mesh.name = name;
+//   }
+
+//   setPosition(x: number, y: number, z: number) {
+//     this.mesh.position.set(x, y, z);
+//   }
+
+//   setRotation(x: number, y: number, z: number) {
+//     this.mesh.rotation.set(x, y, z);
+//   }
+
+//   setScale(scale: number) {
+//     this.mesh.scale.set(scale, scale, scale);
+//   }
+
+//   animateLift(lift: boolean, group: any) {
+//     const liftHeight = 1;
+//     const targetY = lift ? this.baseY + liftHeight : this.baseY;
+//     const tween = new Tween(this.mesh.position)
+//       .to({ y: targetY }, 200)
+//       .easing(Easing.Quadratic.Out)
+//       .start();
+//     group.add(tween);
+//   }
+// }
+
+
 @Component({
   selector: 'app-game',
   templateUrl: './game.component.html',

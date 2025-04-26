@@ -1,0 +1,33 @@
+<div class="lobby">
+  <header class="lobby-header">
+    <h1>Bem-vindo, <span class="username">{{userName}}</span>!</h1>
+    <button class="logout-button" (click)="logout()">sair</button>
+  </header>
+
+  <main class="lobby-main">
+    <section *ngIf="!loading && lobby.rooms.length > 0" class="room-list">
+      <h2>Salas Disponíveis</h2>
+      <ul>
+        <li *ngFor="let room of lobby.rooms" class="room-item">
+          <div class="room-info">
+            <h3>{{room.name}}</h3>
+            <p>{{room.players.length}}/4 Jogadores</p>
+          </div>
+          <button (click)="joinRoom(room.id)">Entrar</button>
+        </li>
+      </ul>
+    </section>
+
+    <section *ngIf="!loading && lobby.rooms.length === 0" class="no-rooms">
+      <p>Nenhuma sala criada ainda. Seja o primeiro a criar uma sala!</p>
+    </section>
+
+    <section class="create-room-section">
+      <h2>Criar Nova Sala</h2>
+			<div class="new-room">
+				<input id="new-room-name" type="text" [(ngModel)]="newRoomName" placeholder="Nome da Sala">
+				<button class="create-room" (click)="createRoom()">Criar Sala</button>
+			</div>
+    </section>
+  </main>
+</div>

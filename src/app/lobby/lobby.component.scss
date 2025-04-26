@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Press Start 2P', cursive;
+}
+
+.lobby {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'Press Start 2P', cursive;
+  background: linear-gradient(to right, #ff9966, #ffcc66);
+}
+
+.lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.lobby-header h1 {
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.logout-button {
+  padding: 10px 20px;
+  background: #ff6600;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background: #ff8533;
+}
+
+.lobby-main {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centraliza o conteúdo */
+}
+
+.room-list, .no-rooms, .create-room-section {
+  width: 100%;
+  max-width: 600px; /* Define a largura máxima */
+  margin-bottom: 40px;
+}
+
+.room-list h2, .create-room-section h2 {
+  font-size: 1.2rem;
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center; /* Centraliza o texto */
+}
+
+.room-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.room-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff3e0;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+
+.room-info {
+  max-width: 70%; /* Limita a largura das informações da sala */
+}
+
+.room-info h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.room-info p {
+  margin: 5px 0 0 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.room-item button {
+  padding: 10px 15px;
+  background: #ff6600;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  flex-shrink: 0; /* Evita que o botão diminua de tamanho */
+}
+
+.room-item button:hover {
+  background: #ff8533;
+}
+
+.create-room-section input[type="text"] {
+  width: 100%;
+  padding: 10px 15px;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  border: 2px solid #333;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+
+.create-room-section .create-room {
+  padding: 10px 20px;
+  background: #ff6600;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.create-room-section button {
+  padding: 10px 15px;
+  background: #ff6600;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  flex-shrink: 0; /* Evita que o botão diminua de tamanho */
+}
+
+
+.create-room-section .create-room:hover {
+  background: #ff8533;
+}
+
+.no-rooms p {
+  font-size: 1rem;
+  color: #333;
+  text-align: center;
+}
+
+.new-room {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
