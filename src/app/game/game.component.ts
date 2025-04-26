@@ -50,7 +50,6 @@ import  { Tween, Group, Easing } from '@tweenjs/tween.js';
 @Component({
   selector: 'app-game',
   templateUrl: './game.component.html',
-  styleUrls: ['./game.component.scss'],
 })
 export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
   private raycaster = new THREE.Raycaster();
