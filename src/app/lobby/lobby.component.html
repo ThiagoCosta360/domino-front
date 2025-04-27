@@ -1,11 +1,12 @@
 <div class="lobby">
+	<header class="lobby-header">
+		<h1>Bem-vindo, <span class="username">{{ userName }}</span>!</h1>
+		<button class="logout-button" (click)="logout()">Sair</button>
+	</header>
   <canvas id="bg-canvas"></canvas>
 
   <div class="lobby-card">
-    <header class="lobby-header">
-      <h1>Bem-vindo, <span class="username">{{ userName }}</span>!</h1>
-      <button class="logout-button" (click)="logout()">Sair</button>
-    </header>
+    
 
     <div class="lobby-content">
       <!-- Lista de Salas -->
