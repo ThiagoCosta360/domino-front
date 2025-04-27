@@ -1,33 +1,47 @@
 <div class="lobby">
-  <header class="lobby-header">
-    <h1>Bem-vindo, <span class="username">{{userName}}</span>!</h1>
-    <button class="logout-button" (click)="logout()">sair</button>
-  </header>
+  <canvas id="bg-canvas"></canvas>
 
-  <main class="lobby-main">
-    <section *ngIf="!loading && lobby.rooms.length > 0" class="room-list">
-      <h2>Salas Disponíveis</h2>
-      <ul>
-        <li *ngFor="let room of lobby.rooms" class="room-item">
-          <div class="room-info">
-            <h3>{{room.name}}</h3>
-            <p>{{room.players.length}}/4 Jogadores</p>
-          </div>
-          <button (click)="joinRoom(room.id)">Entrar</button>
-        </li>
-      </ul>
-    </section>
+  <div class="lobby-card">
+    <header class="lobby-header">
+      <h1>Bem-vindo, <span class="username">{{ userName }}</span>!</h1>
+      <button class="logout-button" (click)="logout()">Sair</button>
+    </header>
 
-    <section *ngIf="!loading && lobby.rooms.length === 0" class="no-rooms">
-      <p>Nenhuma sala criada ainda. Seja o primeiro a criar uma sala!</p>
-    </section>
+    <div class="lobby-content">
+      <!-- Lista de Salas -->
+      <section *ngIf="!loading" class="room-list">
+        <h2>Salas Disponíveis</h2>
+        <ul *ngIf="lobby.rooms.length; else noRoomsTpl">
+          <li *ngFor="let room of lobby.rooms" class="room-item">
+            <div class="room-info">
+              <h3>{{ room.name }}</h3>
+              <p>{{ room.players.length }}/4 Jogadores</p>
+            </div>
+            <button (click)="joinRoom(room.id)">Entrar</button>
+          </li>
+        </ul>
+      </section>
 
-    <section class="create-room-section">
-      <h2>Criar Nova Sala</h2>
-			<div class="new-room">
-				<input id="new-room-name" type="text" [(ngModel)]="newRoomName" placeholder="Nome da Sala">
-				<button class="create-room" (click)="createRoom()">Criar Sala</button>
-			</div>
-    </section>
-  </main>
+      <!-- Area de criação -->
+      <section class="create-room-section">
+        <h2>Criar Nova Sala</h2>
+        <div class="new-room">
+          <input
+            id="new-room-name"
+            type="text"
+            [(ngModel)]="newRoomName"
+            placeholder=" "
+            required
+          />
+          <label for="new-room-name">Nome da Sala</label>
+          <button class="create-room" (click)="createRoom()">Criar</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Template para “sem salas” -->
+    <ng-template #noRoomsTpl>
+      <p class="no-rooms">Nenhuma sala criada ainda. Seja o primeiro!</p>
+    </ng-template>
+  </div>
 </div>

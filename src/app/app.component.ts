@@ -10,7 +10,7 @@ import { UserService } from '../services/user.service';
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  title = 'Encontro das Pedras';
+  title = 'Domino simples e sem graça';
 
 	constructor(private userService: UserService, private router: Router) {	
 		if (this.userService.getUser()) 

@@ -1,8 +1,25 @@
+<div class="login-wrapper">
+  <canvas id="bg-canvas"></canvas>
 
-<div class="login">
-	<div class="logo">
-		<h1>Encontro <br> das <br> Pedras</h1>
-	</div>
-	<input type="text" [(ngModel)]="username" placeholder="Nome">
-	<button (click)="login()">Jogar</button>
+  <div class="login-card" role="form" aria-labelledby="login-title">
+    <h2 id="login-title">OMINOD</h2>
+    
+    <div class="input-group">
+      <input
+        type="text"
+        id="username"
+        [(ngModel)]="username"
+        placeholder=" "
+        required
+        aria-required="true"
+      />
+      <label for="username">Nome</label>
+    </div>
+
+    <button
+      (click)="login()"
+    >
+      <span >Jogar</span>
+    </button>
+  </div>
 </div>
