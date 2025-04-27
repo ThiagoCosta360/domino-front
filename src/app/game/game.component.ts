@@ -1,409 +1,240 @@
-import { Component, OnInit, HostListener, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, HostListener } from '@angular/core';
 import * as THREE from 'three';
-import { WebsocketService } from '../../services/websocket.service';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three-stdlib';
-import  { Tween, Group, Easing } from '@tweenjs/tween.js';
-
-// export class DominoPiece {
-//   public mesh: THREE.Object3D;
-//   public name: string;
-//   public value1: number;
-//   public value2: number;
-//   private baseY: number;
-//   public isSelected: boolean = false;
-//   public isHovered: boolean = false;
-
-//   constructor(mesh: THREE.Object3D, name: string, value1: number, value2: number) {
-//     this.mesh = mesh;
-//     this.name = name;
-//     this.value1 = value1;
-//     this.value2 = value2;
-//     this.baseY = mesh.position.y;
-//     this.mesh.name = name;
-//   }
-
-//   setPosition(x: number, y: number, z: number) {
-//     this.mesh.position.set(x, y, z);
-//   }
-
-//   setRotation(x: number, y: number, z: number) {
-//     this.mesh.rotation.set(x, y, z);
-//   }
-
-//   setScale(scale: number) {
-//     this.mesh.scale.set(scale, scale, scale);
-//   }
-
-//   animateLift(lift: boolean, group: any) {
-//     const liftHeight = 1;
-//     const targetY = lift ? this.baseY + liftHeight : this.baseY;
-//     const tween = new Tween(this.mesh.position)
-//       .to({ y: targetY }, 200)
-//       .easing(Easing.Quadratic.Out)
-//       .start();
-//     group.add(tween);
-//   }
-// }
-
+import { Tween, Group, Easing } from '@tweenjs/tween.js';
+import { WebsocketService } from '../../services/websocket.service';
 
 @Component({
   selector: 'app-game',
   templateUrl: './game.component.html',
 })
 export class GameComponent implements OnInit, AfterViewInit, OnDestroy {
-  private raycaster = new THREE.Raycaster();
-  private mouse = new THREE.Vector2();
-  private selectedObject: THREE.Object3D | null = null;
   private scene = new THREE.Scene();
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   private controls!: OrbitControls;
+
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
   private loader = new GLTFLoader();
-  private animationId: number = 0;
-	private cube!: THREE.Mesh;
-	private hoveredObject: THREE.Object3D | null = null;
-	private group = new Group();
 
-	private adjacentPositions: { [key: string]: THREE.Mesh } = {};
+  private animationGroup = new Group();
+  private selectedPiece: THREE.Object3D | null = null;
+  private hoveredPiece: THREE.Object3D | null = null;
+  private adjacentPositions: Record<string, THREE.Mesh> = {};
+  private handArea = { startX: -3, y: 15, z: 13.3, spacing: 1 };
 
+  constructor(private wsService: WebsocketService) {}
 
-
-  // Área definida para a mão do jogador
-  private handArea = {
-    startX: -3,
-    y: 15,
-    z: 13.3,
-    spacing: 1,
-  };
-
-  // constructor(private wsService: WebsocketService) {}
-
-  ngOnInit(): void {
-    // this.wsService.onMessage().subscribe((message) => {
-    //   console.log('Mensagem recebida do servidor:', message);
-    // });
-
-    // this.wsService.sendMessage('Olá do cliente!');
+  ngOnInit(): void {}
+  ngAfterViewInit(): void {
+    this.initThreeJS();
+    this.loadDominoPieces();
+    this.renderer.setAnimationLoop(() => this.animate());
   }
+  ngOnDestroy(): void { this.renderer.dispose(); }
 
-	ngAfterViewInit(): void {
-		this.initThreeJS();
-		this.loadDominoPieces();
-		// this.animate();
-		this.renderer.setAnimationLoop( this.animate );
-	}
+  private initThreeJS(): void {
+    // setup camera
+    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+    this.camera.position.set(0, 23, 15);
+    this.camera.lookAt(0, 0, 0);
 
-  ngOnDestroy(): void {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-    }
-    this.renderer.dispose();
-  }
-
-  initThreeJS() {
-    // Configuração da câmera
-    this.camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-
-    // Configuração do renderizador
+    // renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setClearColor(0x5B3A29); // wood brown background
+    this.renderer.shadowMap.enabled = true;
     document.body.appendChild(this.renderer.domElement);
 
-    // Iluminação
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this.scene.add(ambientLight);
+    // lights
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10,20,10);
+    dirLight.castShadow = true;
+    this.scene.add(dirLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 10, 10).normalize();
-    this.scene.add(directionalLight);
+    // board
+    const size = 20;
+    new THREE.TextureLoader().load(
+      'assets/textures/wood_table.jpg',
+      tex => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(4,4);
+        const board = new THREE.Mesh(
+          new THREE.PlaneGeometry(size, size),
+          new THREE.MeshPhongMaterial({ map: tex })
+        );
+        board.rotation.x = -Math.PI/2;
+        board.receiveShadow = true;
+        this.scene.add(board);
+      }, undefined, () => {
+        const board = new THREE.Mesh(
+          new THREE.PlaneGeometry(size, size),
+          new THREE.MeshPhongMaterial({ color: 0xDEB887 })
+        );
+        board.rotation.x = -Math.PI/2;
+        board.receiveShadow = true;
+        this.scene.add(board);
+      }
+    );
 
-		const pointLight = new THREE.PointLight(0xffffff, 1);
-		pointLight.position.set(10, 10, 10);
-		this.scene.add(pointLight);
+    // table borders
+    const borderMat = new THREE.MeshPhongMaterial({ color: 0x654321 });
+    const t = 0.5, h=1;
+    [[size+2*t,t,t,0,-size/2-t/2],[size+2*t,t,t,0,size/2+t/2],[t,t,size,-size/2-t/2,0],[t,t,size,size/2+t/2,0]]
+      .forEach(params => {
+        const [w,th,d,x,z] = params;
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,th,d), borderMat);
+        mesh.position.set(x,th/2,z);
+        mesh.receiveShadow = true;
+        this.scene.add(mesh);
+      });
 
-		this.camera.position.set(0, 25, 15);
-		this.camera.lookAt(0, 0, 3);
+    // orbit controls for camera movement & zoom
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.1;
+    this.controls.enableZoom = true;
+    this.controls.enablePan = true;
+    this.controls.addEventListener('change', () => {
+      console.log('Camera moved to', this.camera.position);
+    });
 
-    // Mesa quadriculada
-    const gridSize = 20;
-    const gridDivisions = 20;
-    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x444444, 0x888888);
-    this.scene.add(gridHelper);
-
-		// Controles de órbita
-		// this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-		// this.controls.enableDamping = true;
-		// this.controls.dampingFactor = 0.1;
-		// this.controls.enablePan = true;
-		// this.controls.minDistance = 10;
-		// this.controls.maxDistance = 100;
-		// this.controls.maxPolarAngle = Math.PI / 2;
-
+    // handle window resize
+    window.addEventListener('resize', () => {
+      this.camera.aspect = window.innerWidth/window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   }
 
-  loadDominoPieces() {
-		const totalPieces = 28; // Dominó padrão (0-0 até 6-6)
-		let loadedPieces = 0;
-		const p = 39 //proportion
+  private loadDominoPieces(): void {
+    const scale = 39;
+    // center piece
+    this.loader.load('assets/models/pieces/6-6.glb', ({ scene: piece }) => {
+      piece.name = 'domino-6-6';
+      piece.scale.setScalar(scale);
+      piece.position.set(0,0.2,0);
+      piece.rotation.x = -Math.PI/2;
+      piece.castShadow = true;
+      piece.userData['baseY'] = piece.position.y;
+      this.scene.add(piece);
+      this.createAdjacentPositions(piece.position.clone());
+    });
+    // hand
+    ['6-5','6-4','6-3','6-2','6-1','6-0','5-5'].forEach((id,i) => {
+      this.loader.load(`assets/models/pieces/${id}.glb`, ({ scene: piece }) => {
+        piece.name = `domino-${id}`;
+        piece.scale.setScalar(scale);
+        piece.position.set(
+          this.handArea.startX + (i%7)*this.handArea.spacing,
+          this.handArea.y,
+          this.handArea.z );
+        piece.rotation.set(-Math.PI/3,0,0);
+        piece.castShadow = true;
+        piece.userData['baseY'] = piece.position.y;
+        this.scene.add(piece);
+      });
+    });
+  }
 
-		this.loader.load( 'assets/models/pieces/6-6.glb',  ( gltf ) =>  {
-							const dominoPiece = gltf.scene;
-							dominoPiece.name = `domino-6-6`;
-							
-		
-							// Configurar escala adequada
-							dominoPiece.scale.set(p,p, p);
+  private createAdjacentPositions(center: THREE.Vector3): void {
+    const geo = new THREE.PlaneGeometry(1,1);
+    const mat = new THREE.MeshBasicMaterial({ visible: false });
+    [{k:'north',x:center.x,z:center.z-2.5},
+     {k:'south',x:center.x,z:center.z+0.5},
+     {k:'west', x:center.x-1,z:center.z-1},
+     {k:'east', x:center.x+1,z:center.z-1}]
+      .forEach(o => {
+        const m = new THREE.Mesh(geo, mat.clone());
+        m.rotation.x = -Math.PI/2;
+        m.position.set(o.x,0.1,o.z);
+        m.name = `position-${o.k}`;
+        this.adjacentPositions[o.k] = m;
+        this.scene.add(m);
+      });
+  }
 
+  private animateLift(obj: THREE.Object3D, lift: boolean): void {
+    const baseY = obj.userData['baseY'];
+    const tgt = lift? baseY+1: baseY;
+    new Tween(obj.position).to({ y: tgt },200).easing(Easing.Quadratic.Out).start();
+  }
 
-							dominoPiece.position.set(0.5, 0.1, 0);
-							dominoPiece.rotation.set(-Math.PI / 2, 0, 0); // Deitado sobre a mesa
-
-							// Armazenar a posição base em Y
-							dominoPiece.userData["baseY"] = dominoPiece.position.y;
-
-
-		
-							this.scene.add(dominoPiece);
-
-							// Criar as posições adjacentes após adicionar a peça central
-  const centralPosition = dominoPiece.position.clone();
-  this.createAdjacentPositions(centralPosition);
-						}, undefined, function ( error ) {
-		
-			console.error( error );
-		} );
-
-		const hand = ["6-5", "6-4", "6-3", "6-2", "6-1", "6-0", "5-5"];
-		for (const piece of hand) {
-				
-				const fileName = `assets/models/pieces/${piece}.glb`;
-				this.loader.load(
-					fileName,
-					(gltf) => {
-						const dominoPiece = gltf.scene;
-						dominoPiece.name = `domino-${piece}`;
-	
-						// Configurar escala adequada
-						dominoPiece.scale.set(p, p, p);
-	
-						// Posicionar inicialmente na área da mão do jogador
-						const index = loadedPieces;
-						const x =
-							this.handArea.startX +
-							(index % 7) * this.handArea.spacing 
-						const z = this.handArea.z;
-	
-						dominoPiece.position.set(x, this.handArea.y, z);
-						dominoPiece.rotation.set(-Math.PI / 3, 0, 0); // Deitado sobre a mesa
-	
-						this.scene.add(dominoPiece);
-						console.log(`Peça carregada: domino-${piece} na posição (${x}, ${this.handArea.y}, ${z})`);
-						loadedPieces++;
-					},
-					undefined,
-					(error) => {
-						console.error(`Erro ao carregar a peça ${piece}:`, error);
-					}
-				);
-			}
-		
-	}
-
-	animateLift(object: THREE.Object3D, lift: boolean) {
-		const liftHeight = 1; // Altura que a peça vai levantar
-		const baseY = object.userData["baseY"] || 0; // Posição base em Y
-		const targetY = lift ? baseY + liftHeight : baseY;
-	
-		const tween = new Tween(object.position)
-			.to({ y: targetY }, 200) // Duração de 200ms
-			.easing(Easing.Quadratic.Out)
-			.start();
-
-		 this.group.add(tween)
-	}
-
-
-createAdjacentPositions(centerPosition: THREE.Vector3) {
-  const size = 1; // Ajuste conforme necessário
-  const geometry = new THREE.PlaneGeometry(size, size);
-  const material = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,
-    opacity: 0.5,
-    transparent: true,
-    visible: true, // Torne visível para depuração; defina como false depois
-  });
-
-
-  const positions = [
-    { name: 'north', x: centerPosition.x, z: centerPosition.z - 2.5 },
-    { name: 'south', x: centerPosition.x, z: centerPosition.z + 0.5 },
-    { name: 'west', x: centerPosition.x - 1, z: centerPosition.z -1 },
-    { name: 'east', x: centerPosition.x + 1, z: centerPosition.z -1 },
-  ];
-
-  positions.forEach((pos) => {
-    const plane = new THREE.Mesh(geometry, material.clone());
-    plane.position.set(pos.x, 0.1, pos.z);
-    plane.rotation.x = -Math.PI / 2; // Plano paralelo ao chão
-    plane.name = `position-${pos.name}`;
-    this.adjacentPositions[pos.name] = plane;
-    this.scene.add(plane);
-  });
-}
-
-
-  animate = () => {
-    // this.animationId = requestAnimationFrame(this.animate);
+  private animate(): void {
+    this.animationGroup.update();
+    this.controls.update();
     this.renderer.render(this.scene, this.camera);
-		this.group.update();
-		// this.controls.update();
-  };
-
-	@HostListener('window:mousemove', ['$event'])
-	onMouseMove(event: MouseEvent) {
-		// Atualizar coordenadas do mouse
-		this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-		this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-	
-		this.raycaster.setFromCamera(this.mouse, this.camera);
-		const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-	
-		console.log('objeto:', intersects[0].object.name);
-
-		if (intersects.length > 0 && intersects[0].object.name.startsWith('Low_Domino_0')) {
-			const intersected = intersects[0].object;
-
-				console.log('Peça de dominó detectada:', intersected.name);
-				const newHoveredObject = intersected.parent instanceof THREE.Object3D ? intersected.parent : intersected;
-	
-				if (this.hoveredObject !== newHoveredObject) {
-					// Restaurar a peça anteriormente "hovered"
-					if (this.hoveredObject && this.hoveredObject !== this.selectedObject) {
-						this.animateLift(this.hoveredObject, false);
-					}
-	
-					// Atualizar a peça atualmente "hovered"
-					this.hoveredObject = newHoveredObject;
-	
-					// Elevar a nova peça, se não estiver selecionada
-					if (this.hoveredObject !== this.selectedObject) {
-						this.animateLift(this.hoveredObject, true);
-					}
-				}
-			
-		} else {
-			// Se não houver interseção, restaurar a peça "hovered"
-			if (this.hoveredObject && this.hoveredObject !== this.selectedObject) {
-				this.animateLift(this.hoveredObject, false);
-			}
-			this.hoveredObject = null;
-		}
-	
-		// // Movimentação da peça selecionada
-		// if (this.selectedObject) {
-		// 	// Atualizar posição da peça selecionada
-		// 	// (Conforme o código atualizado anteriormente)
-		// 	const planeY = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.selectedObject.position.y);
-		// 	const intersectPoint = new THREE.Vector3();
-		// 	this.raycaster.ray.intersectPlane(planeY, intersectPoint);
-	
-		// 	if (intersectPoint) {
-		// 		this.selectedObject.position.x = intersectPoint.x;
-		// 		this.selectedObject.position.z = intersectPoint.z;
-		// 	}
-		// }
-	}
-	
-	@HostListener('window:mousedown', ['$event'])
-	onMouseDown(event: MouseEvent) {
-		// Atualizar coordenadas do mouse
-		this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-		this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-	
-		this.raycaster.setFromCamera(this.mouse, this.camera);
-		const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-	
-		if (intersects.length > 0) {
-			const intersected = intersects[0].object;
-	
-			// Verificar se clicou em uma peça
-			if (intersected.name.startsWith('Low_Domino_0')) {
-				const selected = intersected.parent instanceof THREE.Object3D ? intersected.parent : intersected;
-				this.selectPiece(selected);
-			}
-			// Verificar se clicou em uma posição adjacente
-			else if (intersected.name.startsWith('position-') && this.selectedPiece) {
-				console.log('Posição adjacente detectada:', intersected.name);
-				const positionName = intersected.name.split('-')[1];
-				const targetPosition = this.adjacentPositions[positionName].position;
-				this.placeSelectedPiece(targetPosition);
-			}
-		}
-	}
-
-	private selectedPiece: THREE.Object3D | null = null;
-
-selectPiece(piece: THREE.Object3D) {
-  // Deselecionar a peça anterior, se houver
-  if (this.selectedPiece) {
-    this.highlightPiece(this.selectedPiece, false);
   }
-  this.selectedPiece = piece;
-  this.highlightPiece(this.selectedPiece, true);
-}
 
-highlightPiece(piece: THREE.Object3D, highlight: boolean) {
-  if (highlight) {
-    // Elevar a peça ou mudar sua cor
-    this.animateLift(piece, true);
-  } else {
-    this.animateLift(piece, false);
+  @HostListener('window:mousemove',['$event'])
+  onMouseMove(e:MouseEvent): void {
+    this.updateMouse(e);
+    this.raycaster.setFromCamera(this.mouse,this.camera);
+    // if dragging piece
+    if (this.selectedPiece) {
+      const plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+      const point = new THREE.Vector3();
+      this.raycaster.ray.intersectPlane(plane, point);
+      this.selectedPiece.position.set(point.x, this.selectedPiece.userData['baseY'], point.z);
+      console.log(`Dragging piece to x:${point.x.toFixed(2)}, z:${point.z.toFixed(2)}`);
+      return;
+    }
+    const hits = this.raycaster.intersectObjects(this.scene.children,true);
+    if (!hits.length) { this.clearHover(); return; }
+    const obj = hits[0].object;
+    if (obj.name.startsWith('domino-')) {
+      const p = obj.parent||obj;
+      if (p !== this.hoveredPiece) {
+        this.clearHover();
+        this.hoveredPiece = p;
+        this.animateLift(p, true);
+      }
+    } else this.clearHover();
   }
-}
 
-updateAdjacentPositionsVisibility(visible: boolean) {
-  Object.values(this.adjacentPositions).forEach((plane) => {
-    plane.visible = visible;
-  });
-}
-
-placeSelectedPiece(targetPosition: THREE.Vector3) {
-  if (this.selectedPiece) {
-    // Mover a peça para a posição alvo
-    this.selectedPiece.position.set(targetPosition.x, targetPosition.y, targetPosition.z);
-    this.selectedPiece.rotation.set(-Math.PI / 2, 0, 0); // Ajustar a orientação, se necessário
-
-    // Deselecionar a peça
-    this.highlightPiece(this.selectedPiece, false);
-    this.selectedPiece = null;
-
-    // Atualizar as posições adjacentes (opcional)
-    // this.updateAdjacentPositions();
+  private clearHover(): void {
+    if (this.hoveredPiece && this.hoveredPiece !== this.selectedPiece) {
+      this.animateLift(this.hoveredPiece,false);
+    }
+    this.hoveredPiece=null;
   }
-}
 
-	@HostListener('window:mouseup', ['$event'])
-	onMouseUp(event: MouseEvent) {
-		// if (this.selectedObject) {
-		// 	// Encaixar no grid mais próximo
-		// 	const gridSize = 1; // Ajuste conforme necessário
-		// 	this.selectedObject.position.x = Math.round(this.selectedObject.position.x / gridSize) * gridSize;
-		// 	this.selectedObject.position.z = Math.round(this.selectedObject.position.z / gridSize) * gridSize;
-	
-		// 	// Restaurar a elevação se necessário
-		// 	if (this.hoveredObject !== this.selectedObject) {
-		// 		this.animateLift(this.selectedObject, false);
-		// 	}
-		// }
-	
-		// this.selectedObject = null;
-	}
-	
+  @HostListener('window:mousedown',['$event'])
+  onMouseDown(e:MouseEvent): void {
+    this.updateMouse(e);
+    const hits = this.raycaster.intersectObjects(this.scene.children,true);
+    if (!hits.length) return;
+    const obj = hits[0].object;
+    if (obj.name.startsWith('domino-')) {
+      this.selectedPiece = obj.parent||obj;
+      this.animateLift(this.selectedPiece,true);
+      Object.values(this.adjacentPositions).forEach(m=>m.visible=true);
+    } else if (obj.name.startsWith('position-') && this.selectedPiece) {
+      this.placePiece(this.adjacentPositions[obj.name.split('-')[1]].position);
+    }
+  }
+
+  @HostListener('window:mouseup')
+  onMouseUp(): void {
+    if (this.selectedPiece) {
+      this.animateLift(this.selectedPiece,false);
+      this.selectedPiece=null;
+      Object.values(this.adjacentPositions).forEach(m=>m.visible=false);
+    }
+  }
+
+  private placePiece(pos: THREE.Vector3): void {
+    if (!this.selectedPiece) return;
+    this.selectedPiece.position.copy(pos);
+    this.selectedPiece.rotation.set(-Math.PI/2,0,0);
+  }
+
+  private updateMouse(e: MouseEvent): void {
+    this.mouse.x = (e.clientX/window.innerWidth)*2-1;
+    this.mouse.y = -(e.clientY/window.innerHeight)*2+1;
+  }
 }

@@ -1,16 +1,18 @@
-/* 1) Import de fonte e variáveis globais */
+/* -------------------------------------------------
+   Improved Lobby & Room List Styles
+------------------------------------------------- */
+
+/* 1) Font imports & variables remain unchanged */
 @import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Quicksand:wght@400;600&display=swap');
 
 :root {
-  /* Cores */
   --clr-primary:   #ff6600;
   --clr-secondary: #ffd366;
   --clr-bg:        #1a1a1a;
   --clr-card:      #2b2b2b;
   --clr-text:      #eee;
+  --clr-subtext:   #aaa;
   --transition:    0.3s ease;
-
-  /* Fontes */
   --font-display: 'Russo One', sans-serif;
   --font-ui:      'Quicksand', sans-serif;
 }
@@ -35,25 +37,20 @@
   z-index: 1;
 }
 
-/* 3) Cartão centralizado */
+/* 3) Lobby card container tweaks */
 .lobby-card {
   position: relative;
   z-index: 2;
   background: var(--clr-card);
-  padding: 2rem;
-  border-radius: 12px;
-  width: 90%;
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  width: 95%;
   max-width: 600px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.8);
   animation: cardIn 0.8s var(--transition) backwards;
 }
 
-@keyframes cardIn {
-  from { opacity: 0; transform: scale(0.8); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-/* 4) Header com bounce */
+/* 4) Section titles inside card */
 .lobby-header {
   display: flex;
   justify-content: space-between;
@@ -70,17 +67,20 @@
   animation: bounce 2.5s ease-in-out infinite;
 }
 
-
-.username {
+.lobby-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
   color: var(--clr-primary);
+  text-align: center;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--clr-secondary);
+  padding-bottom: 0.5rem;
 }
 
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-10px); }
-}
+/* 5) Room list tweaks */
 
-/* 5) Botões neon press */
 .logout-button,
 .room-item button,
 .create-room {
@@ -99,84 +99,79 @@
   transition: transform var(--transition), box-shadow var(--transition);
 }
 
-.logout-button:hover,
-.room-item button:hover,
-.create-room:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px #cc5200;
-}
-
-.logout-button:active,
-.room-item button:active,
-.create-room:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px #cc5200;
-}
-
-/* 6) Lista de salas */
-.lobby-main {
-  font-family: var(--font-ui);
-}
-
-.room-list h2,
-.create-room-section h2 {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  color: var(--clr-secondary);
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
 .room-list ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: grid;
+  gap: 1rem;
 }
 
 .room-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #333;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border-radius: 8px;
-  transition: background var(--transition);
+  background: linear-gradient(135deg, #2c2c2c, #383838);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  transition: transform var(--transition), background var(--transition);
 }
 
 .room-item:hover {
-  background: #3a3a3a;
+  transform: translateY(-2px) scale(1.02);
+  background: linear-gradient(135deg, #3a3a3a, #444444);
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
 }
 
 .room-info h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
   color: var(--clr-text);
 }
 
 .room-info p {
   margin: 0.25rem 0 0;
   font-size: 0.85rem;
-  color: #aaa;
+  color: var(--clr-subtext);
 }
 
-/* 7) Criar sala com input flutuante */
+.room-item button {
+  padding: 0.7rem 1.2rem;
+}
+
+/* 6) "No rooms" state */
+.no-rooms {
+  text-align: center;
+  font-style: italic;
+  color: var(--clr-subtext);
+  margin-top: 1rem;
+}
+
+/* 7) Create-room section adjustments */
+.create-room-section {
+  margin-top: 2rem;
+}
+
 .create-room-section .new-room {
   display: flex;
-  align-items: center;
   gap: 0.5rem;
+  align-items: center;
 }
 
 .create-room-section input {
   flex: 1;
-  padding: 0.8rem 1rem;
+  padding: 0.75rem 1rem;
   background: #333;
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--clr-text);
   font-family: var(--font-ui);
   transition: border var(--transition), background var(--transition);
-  outline: none;
 }
 
 .create-room-section input:focus {
@@ -184,11 +179,9 @@
   border-color: var(--clr-primary);
 }
 
-.create-room-section input::placeholder {
-  color: rgba(255,255,255,0.5);
-  font-style: italic;
-}
-
-.create-room-section label {
-  display: none;
+/* 8) Buttons: minor size tweak */
+.logout-button,
+.room-item button,
+.create-room {
+  font-size: 0.85rem;
 }
