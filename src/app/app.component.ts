@@ -14,6 +14,6 @@ export class AppComponent {
 
 	constructor(private userService: UserService, private router: Router) {	
 		if (this.userService.getUser()) 
-			this.router.navigate(["/lobby"]);
+			this.router.navigate(["/game"]);
 	}
 }
